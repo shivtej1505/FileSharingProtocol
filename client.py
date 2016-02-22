@@ -14,7 +14,6 @@ try:
     #host_ip = socket.gethostbyname(host)
     #print host_ip
     host = socket.gethostname()
-    #host = "www.rentooz.com"
 except socket.gaierror:
     print 'Hostname could not be resolved.Exiting'
     sys.exit()
@@ -23,21 +22,34 @@ try:
     #print (host_ip, port)
     client_socket.connect((host, port))
 except Exception, e:
-    print "Error: " + str(e)
+    print "Cannot connect to server"
     sys.exit()
 
 print 'Connected to ' + host
 
+def process_response(response):
+    if response == "quit":
+        print "Closing connection"
+        client_socket.close()
+        print "Connection closed.Exiting..."
+        sys.exit()
+    else:
+        print "----------------server response------------------"
+        print response
+        print "----------------server response------------------"
+
+
 while True:
     try:
         message = raw_input()
-        client_socket.sendall(message)
-        data = client_socket.recv(1024)
-        print data
-    except KeyboardInterrupt:
-        break
+        if message:
+            client_socket.sendall(message)
+        response = client_socket.recv(1024)
+        if response:
+            process_response(response)
     except socket.error, e:
-        print e
+        print "Socket Error: " +  e
         break
 
 client_socket.close()
+sys.exit()
