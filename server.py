@@ -4,6 +4,8 @@ import sys
 import os
 import stat
 import time
+from datetime import datetime
+
 
 HOST = ''
 PORT = 3500
@@ -103,18 +105,22 @@ def receive_from_client():
         bytes_received += 1024
     return ''.join(chunks)
 
+def invalid_command():
+    print "Invalid command issued by client"
+    send_to_client(INVALID_COMMAND)
+    return
+
 def run_command(request):
     # is valid command
     request_components = request.split()
     #print request_components
-    if len(request_components) > 2 or len(request_components) <= 0:
-        print "Invalid request by client"
-        conn.sendall(INVALID_COMMAND)
+    if len(request_components) <= 0:
+        invalid_command()
         return
 
     command = request_components[0]
     flag = None
-    if len(request_components) == 2:
+    if len(request_components) >= 2:
         flag = request_components[1]
     
     # identifying the command
@@ -125,7 +131,7 @@ def run_command(request):
             help_string += COMMAND_HELP + "\n"
             help_string += COMMAND_INDEX_GET + "\n"
             help_string += COMMAND_FILE_HASH
-            conn.sendall(help_string)
+            send_to_client(help_string)
 
         elif flag == COMMAND_HELP_FLAG_2:
             help_string = "Get list of shared files, which you can download.\n"
@@ -133,20 +139,56 @@ def run_command(request):
             help_string += COMMAND_INDEX_GET_FLAG_1 + "\n"
             help_string += COMMAND_INDEX_GET_FLAG_2 + "\n"
             help_string += COMMAND_INDEX_GET_FLAG_3
-            conn.sendall(help_string)
+            send_to_client(help_string)
 
         elif flag == COMMAND_HELP_FLAG_3:
             help_string = "Donno\n"
             help_string += "Flags available:\n"
             help_string += COMMAND_FILE_HASH_FLAG_1 + "\n"
             help_string += COMMAND_FILE_HASH_FLAG_2 + "\n"
-            conn.sendall(help_string)
+            send_to_client(help_string)
 
     elif command == COMMAND_INDEX_GET:
         # IndexGet command
         print "Client requested for list of shared files"
         print "sending list..."
         if flag == COMMAND_INDEX_GET_FLAG_1:
+            print "-----------"
+            if len(request_components) < 4:
+                invalid_command()
+                return
+            try:
+                start_date = datetime.strptime(request_components[2], "%d-%m-%Y")
+                end_date = datetime.strptime(request_components[3], "%d-%m-%Y")
+            except TypeError, e:
+                print e
+                return
+            print start_date
+            print end_date
+
+            response = "Filename\t" + "Size\t\t" + "Date\t\t" + "\t\tType\n"
+            files = os.listdir(shared_directory)
+            print files
+
+            for a_file in files:
+                file_stat = os.stat(shared_directory + "/" + a_file)
+                file_size = str(file_stat.st_size)
+                file_ctime = str(time.ctime(file_stat.st_ctime))
+                file_date = time.strftime("%d-%m-%Y", time.localtime(file_stat.st_ctime))
+                file_cdate = datetime.strptime(file_date, "%d-%m-%Y")
+                file_comp = a_file.split('.')
+                file_type = FILE_TYPE_UNKNOWN
+
+                if len(file_comp) == 2:
+                    file_type = file_comp[1]
+
+                if start_date <= file_cdate and file_cdate <= end_date:
+                    response += a_file + "\t\t" + file_size + " bytes\t"
+                    response +=  file_ctime + "\t" + file_type + "\n"
+                
+            send_to_client(response)
+
+        elif flag == COMMAND_INDEX_GET_FLAG_2:
             response = "Filename\t" + "Size\t\t" + "Date\t\t" + "\t\tType\n"
             files = os.listdir(shared_directory)
             print files
@@ -165,9 +207,6 @@ def run_command(request):
                 response +=  file_ctime + "\t" + file_type + "\n"
 
             send_to_client(response)
-
-        elif flag == COMMAND_INDEX_GET_FLAG_2:
-            send_to_client("Flag 2")
         elif flag == COMMAND_INDEX_GET_FLAG_3:
             send_to_client("Flag 3")
         else:
@@ -181,15 +220,14 @@ def run_command(request):
     elif command == COMMAND_QUIT:
         # Quit command
         print "closing connection"
-        conn.sendall("quit")
+        send_to_client(COMMAND_QUIT)
         conn.close()
         print "connection closed.Exiting..."
         sys.exit()
 
     else:
         # Invalid command
-        send_to_client(INVALID_COMMAND)
-        print INVALID_COMMAND
+        invalid_command()
 
 
 while True:

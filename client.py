@@ -34,9 +34,9 @@ def process_response(response):
         print "Connection closed.Exiting..."
         sys.exit()
     else:
-        print "----------------server response------------------"
+        print "---------------- <server-response> ------------------"
         print response
-        print "----------------server response------------------"
+        print "---------------- </server-response> ------------------"
 
 
 while True:
