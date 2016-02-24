@@ -90,7 +90,6 @@ def process_response():
         print "Invalid response"
         return
     
-    response_body = get_response_body(response_length)
 
     if response_method == RESPONSE_METHOD_QUIT:
         print "Closing connection"
@@ -99,18 +98,21 @@ def process_response():
         sys.exit()
 
     elif response_method == RESPONSE_METHOD_HELP:
+        response_body = get_response_body(response_length)
         print "------------------HELP----------------------"
         print response_body 
         print "------------------HELP----------------------"
         return
 
     elif response_method == RESPONSE_METHOD_INDEX:
+        response_body = get_response_body(response_length)
         print "------------------INDEX----------------------"
         print response_body 
         print "------------------INDEX----------------------"
         return
     
     elif response_method == RESPONSE_METHOD_HASH:
+        response_body = get_response_body(response_length)
         print "------------------INDEX----------------------"
         print response_body 
         print "------------------INDEX----------------------"
@@ -118,36 +120,44 @@ def process_response():
 
     elif response_method == RESPONSE_METHOD_DOWNLOAD:
         print "------------------FILE-DOWNLOAD----------------------"
+        is_download = raw_input("File size is " + str(response_length) + " Download?[y/N] ")
+        if is_download == 'y':
+            response_body = get_response_body(response_length)
 
-        file_attib = response_body.split("\t")
-        file_name = file_attib[0]
-        file_size = file_attib[1]
-        file_mtime = file_attib[2]
-        file_hash = file_attib[3]
-        file_content = ' '.join(file_attib[4:])[1:]
+            file_attib = response_body.split("\t")
+            file_name = file_attib[0]
+            file_size = file_attib[1]
+            file_mtime = file_attib[2]
+            file_hash = file_attib[3]
+            file_content = ' '.join(file_attib[4:])[1:]
 
-        print "Filename: " + file_name
-        print "Filesize: " + file_size
-        print "File last modified time: " + file_mtime
-        print "File hash: " + file_hash
-        print "Saving file..."
+            print "Filename: " + file_name
+            print "Filesize: " + file_size
+            print "File last modified time: " + file_mtime
+            print "File hash: " + file_hash
+            print "Saving file..."
 
-        file_obj = open(file_name, 'w')
-        file_obj.write(file_content)
-        file_obj.close()
+            file_obj = open(file_name, 'w')
+            file_obj.write(file_content)
+            file_obj.close()
 
-        print "File saved successfully."
+            print "File saved successfully."
+        else:
+            response_body = get_response_body(response_length)
+            print "Download canceled"
 
         print "------------------FILE-DOWNLOAD----------------------"
         return
     
     elif response_method == RESPONSE_METHOD_ERROR:
+        response_body = get_response_body(response_length)
         print "------------------ERROR----------------------"
         print response_body 
         print "------------------ERROR----------------------"
         return
     
     else:
+        response_body = get_response_body(response_length)
         print "---------------- <server-response> ------------------"
         print response_body
         print "---------------- </server-response> ------------------"
