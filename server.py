@@ -60,17 +60,22 @@ print 'Connected to ' + str(addr[0]) + ":" + str(addr[1])
 
 
 def send_to_client(data, method_name):
-    conn.send(RESPONSE_HEADER + "\n")
-    conn.send(method_name + "\n")
-    DATALEN = len(data)
+    conn.send(RESPONSE_HEADER)
+
+    data_size = str(len(data))
+    response_method_and_size = method_name + data_size.zfill(60)
+    conn.send(response_method_and_size)
+
     total_sent = 0
-    while total_sent < DATALEN:
+    while total_sent < int(data_size):
         sent = conn.send(data[total_sent:])
         if sent == 0:
-            raise RunTimeError("Socket connection broken")
+            raise Exception("Socket connection broken")
         total_sent += sent
 
-    conn.send(RESPONSE_FOOTER)
+    return
+    #footer = conn.send(RESPONSE_FOOTER)
+    #print footer
 
 
 def receive_from_client():
@@ -245,10 +250,7 @@ def run_command(request):
             file_obj.seek(0)
             file_content = file_obj.read()
 
-            print "-----------------"
             data = file_attib + "\n" + file_content
-            print file_content
-            print "-----------------"
 
             send_to_client(data, RESPONSE_METHOD_DOWNLOAD)
         else:
@@ -280,7 +282,7 @@ while True:
         print "An error occured"
         #send_to_client("An error occured", RESPONSE_METHOD_ERROR)
         send_to_client(COMMAND_QUIT, RESPONSE_METHOD_QUIT)
-        print e
+        #print e
         break
 
 conn.close()

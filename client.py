@@ -28,7 +28,49 @@ except Exception, e:
 
 print 'Connected to ' + host
 
-def receive_from_server():
+def get_response_header():
+    response_protocol = client_socket.recv(7)
+    response_protocol_attrib = client_socket.recv(64)
+    response_method = response_protocol_attrib[:4]
+    response_length = int(response_protocol_attrib[4:])
+    #print response_protocol
+    #print response_method
+    #print response_length
+    return (response_protocol, response_method, response_length)
+
+def get_response_body(response_length):
+    chunks = []
+    current_size = 0
+    while current_size < response_length:
+        chunk = client_socket.recv(response_length - current_size)
+        chunks.append(chunk)
+        current_size += len(chunk)
+
+    return ''.join(chunks)
+
+    """
+    response_components = response.split("\n")
+    response_header = response_components[0]
+    if response_header != RESPONSE_HEADER or len(response_components) < 2:
+        print "Invalid response"
+        return
+    print response_components
+    
+    response_attrib = response_components[1].split()
+    response_method = response_attrib[0]
+    response_length = int(response_attrib[1])
+    response_body = '\n'.join(response_components[2:])
+    print "------------------"
+    print response_attrib
+    print response_method
+    print response_length
+    print type(response_body)
+    print response_body
+    valid_response = response_body[:response_length]
+    print valid_response
+    print len(valid_response)
+    print "------------------"
+    return tmp
     chunks = []
     while True:
         chunk = client_socket.recv(1024)
@@ -38,18 +80,17 @@ def receive_from_server():
         chunks.append(chunk)
 
     return ''.join(chunks)
+    """
 
 
 def process_response():
-    response = receive_from_server()
-    response_components = response.split("\n")
-    response_header = response_components[0]
-    if response_header != RESPONSE_HEADER or len(response_components) < 2:
+    response_protocol, response_method, response_length = get_response_header()
+    #print response_protocol, response_method, response_length
+    if response_protocol != RESPONSE_HEADER:
         print "Invalid response"
         return
-
-    response_method = response_components[1]
-    response_body = '\n'.join(response_components[1:])
+    
+    response_body = get_response_body(response_length)
 
     if response_method == RESPONSE_METHOD_QUIT:
         print "Closing connection"
@@ -77,23 +118,25 @@ def process_response():
 
     elif response_method == RESPONSE_METHOD_DOWNLOAD:
         print "------------------FILE-DOWNLOAD----------------------"
+
         file_attib = response_body.split("\t")
-        file_name = file_attib[0].split("\n")[1]
+        file_name = file_attib[0]
         file_size = file_attib[1]
         file_mtime = file_attib[2]
         file_hash = file_attib[3]
         file_content = ' '.join(file_attib[4:])[1:]
+
         print "Filename: " + file_name
         print "Filesize: " + file_size
         print "File last modified time: " + file_mtime
         print "File hash: " + file_hash
-        print "--------------"
-        print file_content
-        print "--------------"
+        print "Saving file..."
 
         file_obj = open(file_name, 'w')
         file_obj.write(file_content)
         file_obj.close()
+
+        print "File saved successfully."
 
         print "------------------FILE-DOWNLOAD----------------------"
         return
