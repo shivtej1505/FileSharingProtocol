@@ -27,7 +27,20 @@ except Exception, e:
 
 print 'Connected to ' + host
 
-def process_response(response):
+def receive_from_server():
+    chunks = []
+    while True:
+        chunk = client_socket.recv(1024)
+        if chunk[-4:] == "\r\n\r\n":
+            chunks.append(chunk[:-4])
+            break
+        chunks.append(chunk)
+
+    return ''.join(chunks)
+
+
+def process_response():
+    response = receive_from_server()
     if response == "quit":
         print "Closing connection"
         client_socket.close()
@@ -44,9 +57,7 @@ while True:
         message = raw_input()
         if message:
             client_socket.sendall(message)
-        response = client_socket.recv(1024)
-        if response:
-            process_response(response)
+        process_response()
     except socket.error, e:
         print "Socket Error: " +  e
         break
