@@ -223,7 +223,50 @@ def run_command(request):
         return
 
     elif command == COMMAND_FILE_HASH:
-        send_to_client(COMMAND_FILE_HASH, RESPONSE_METHOD_HASH)
+        # file-hash command
+        if flag == COMMAND_FILE_HASH_FLAG_1:
+            if len(request_components) < 3:
+                invalid_command()
+                return
+            print request_components
+            file_name = request_components[2]
+            try:
+                file_stat = os.stat(shared_directory + "/" + file_name)
+            except OSError:
+                invalid_command()
+                return
+
+            response = "\tChecksum\t\t" + "\tLast Modified Date" + "\n"
+
+            file_obj = open(shared_directory + "/" + file_name, 'r')
+            file_hash = get_file_checksum(file_obj)
+            file_mtime = time.ctime(file_stat.st_mtime)
+
+            response += file_hash + "\t" + str(file_mtime)
+
+            send_to_client(response, RESPONSE_METHOD_HASH)
+            return
+
+        elif flag == COMMAND_FILE_HASH_FLAG_2:
+            response = "Filename\t\t\t" + "Checksum\t\t" + "Last Modified Date" + "\n"
+            files = os.listdir(shared_directory)
+
+            for a_file in files:
+                file_stat = os.stat(shared_directory + "/" + a_file)
+                file_obj = open(shared_directory + "/" + a_file, 'r')
+                file_hash = get_file_checksum(file_obj)
+                file_mtime = str(time.ctime(file_stat.st_mtime))
+
+                response += a_file + "\t\t" + file_hash + "\t" + file_mtime + "\n"
+
+            send_to_client(response, RESPONSE_METHOD_INDEX)
+            return
+
+        elif flag == COMMAND_INDEX_GET_FLAG_3:
+            send_to_client(COMMAND_FILE_HASH, RESPONSE_METHOD_HASH)
+            return
+        else:
+            invalid_command()
 
     elif command == COMMAND_FILE_DOWNLOAD:
         if len(request_components) < 3:
