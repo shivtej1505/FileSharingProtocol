@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import socket
 import sys
+from globals import *
 
 try:
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -41,16 +42,56 @@ def receive_from_server():
 
 def process_response():
     response = receive_from_server()
-    if response == "quit":
+    response_components = response.split("\n")
+    response_header = response_components[0]
+    if response_header != RESPONSE_HEADER or len(response_components) < 2:
+        print "Invalid response"
+        return
+
+    response_method = response_components[1]
+    response_body = '\n'.join(response_components[1:])
+
+    if response_method == RESPONSE_METHOD_QUIT:
         print "Closing connection"
         client_socket.close()
         print "Connection closed.Exiting..."
         sys.exit()
+
+    elif response_method == RESPONSE_METHOD_HELP:
+        print "------------------HELP----------------------"
+        print response_body 
+        print "------------------HELP----------------------"
+        return
+
+    elif response_method == RESPONSE_METHOD_INDEX:
+        print "------------------INDEX----------------------"
+        print response_body 
+        print "------------------INDEX----------------------"
+        return
+    
+    elif response_method == RESPONSE_METHOD_HASH:
+        print "------------------INDEX----------------------"
+        print response_body 
+        print "------------------INDEX----------------------"
+        return
+
+    elif response_method == RESPONSE_METHOD_DOWNLOAD:
+        print "------------------FILE-DOWNLOAD----------------------"
+        print response_body 
+        print "------------------FILE-DOWNLOAD----------------------"
+        return
+    
+    elif response_method == RESPONSE_METHOD_ERROR:
+        print "------------------ERROR----------------------"
+        print response_body 
+        print "------------------ERROR----------------------"
+        return
+    
     else:
         print "---------------- <server-response> ------------------"
-        print response
+        print response_body
         print "---------------- </server-response> ------------------"
-
+        return
 
 while True:
     try:
