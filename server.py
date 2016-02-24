@@ -5,39 +5,10 @@ import os
 import stat
 import time
 from datetime import datetime
-
+from globals import *
 
 HOST = ''
 PORT = 3500
-
-INVALID_COMMAND = "Invalid command"
-
-COMMAND_HELP = "help"  # help command
-COMMAND_HELP_FLAG_1 = "commands" # get list of commands available
-COMMAND_HELP_FLAG_2 = "IndexGet" # get list of shared files
-COMMAND_HELP_FLAG_3 = "FileHash"
-COMMAND_HELP_FLAG_4 = "FileDownload"
-
-
-COMMAND_INDEX_GET = "IndexGet"
-COMMAND_INDEX_GET_FLAG_1 = "shortlist"
-COMMAND_INDEX_GET_FLAG_2 = "longlist"
-COMMAND_INDEX_GET_FLAG_3 = "regex"
-
-
-COMMAND_FILE_HASH = "FileHash"
-COMMAND_FILE_HASH_FLAG_1 = "verify"
-COMMAND_FILE_HASH_FLAG_2 = "checkall"
-
-COMMAND_FILE_DOWNLOAD = "FileDownload"
-COMMAND_FILE_DOWNLOAD_FLAG_1 = "TCP"
-COMMAND_FILE_DOWNLOAD_FLAG_2 = "UDP"
-
-COMMAND_QUIT = "quit"
-
-SHARED_DIRECTORY = "SHARED DIRECTORY"
-
-FILE_TYPE_UNKNOWN = "Unknown"
 
 try:
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -87,7 +58,9 @@ conn, addr = server_socket.accept()
 print 'Connected to ' + str(addr[0]) + ":" + str(addr[1])
 
 
-def send_to_client(data):
+def send_to_client(data, method_name):
+    conn.send(RESPONSE_HEADER + "\n")
+    conn.send(method_name + "\n")
     DATALEN = len(data)
     total_sent = 0
     while total_sent < DATALEN:
@@ -96,8 +69,7 @@ def send_to_client(data):
             raise RunTimeError("Socket connection broken")
         total_sent += sent
 
-    end_response = "\r\n\r\n"
-    conn.send(end_response)
+    conn.send(RESPONSE_FOOTER)
 
 
 def receive_from_client():
@@ -114,7 +86,7 @@ def receive_from_client():
 
 def invalid_command():
     print "Invalid command issued by client"
-    send_to_client(INVALID_COMMAND)
+    send_to_client(INVALID_COMMAND, RESPONSE_METHOD_ERROR)
     return
 
 
@@ -143,7 +115,7 @@ def run_command(request):
             help_string += COMMAND_INDEX_GET + "\n"
             help_string += COMMAND_FILE_HASH + "\n"
             help_string += COMMAND_FILE_DOWNLOAD
-            send_to_client(help_string)
+            send_to_client(help_string, RESPONSE_METHOD_HELP)
 
         elif flag == COMMAND_HELP_FLAG_2:
             help_string = "Get list of shared files, which you can download.\n"
@@ -151,21 +123,21 @@ def run_command(request):
             help_string += COMMAND_INDEX_GET_FLAG_1 + "\n"
             help_string += COMMAND_INDEX_GET_FLAG_2 + "\n"
             help_string += COMMAND_INDEX_GET_FLAG_3
-            send_to_client(help_string)
+            send_to_client(help_string, RESPONSE_METHOD_HELP)
 
         elif flag == COMMAND_HELP_FLAG_3:
             help_string = "Donno\n"
             help_string += "Flags available:\n"
             help_string += COMMAND_FILE_HASH_FLAG_1 + "\n"
             help_string += COMMAND_FILE_HASH_FLAG_2 + "\n"
-            send_to_client(help_string)
+            send_to_client(help_string, RESPONSE_METHOD_HELP)
 
         elif flag == COMMAND_HELP_FLAG_4:
             help_string = "Download files from shared folder\n"
             help_string += "Flags available:\n"
             help_string += COMMAND_FILE_DOWNLOAD_FLAG_1 + "\n"
             help_string += COMMAND_FILE_DOWNLOAD_FLAG_2 + "\n"
-            send_to_client(help_string)
+            send_to_client(help_string, RESPONSE_METHOD_HELP)
 
     elif command == COMMAND_INDEX_GET:
         # IndexGet command
@@ -204,7 +176,7 @@ def run_command(request):
                     response += a_file + "\t\t" + file_size + " bytes\t"
                     response +=  file_ctime + "\t" + file_type + "\n"
                 
-            send_to_client(response)
+            send_to_client(response, RESPONSE_METHOD_INDEX)
 
         elif flag == COMMAND_INDEX_GET_FLAG_2:
             response = "Filename\t" + "Size\t\t" + "Date\t\t" + "\t\tType\n"
@@ -224,41 +196,42 @@ def run_command(request):
                 response += a_file + "\t\t" + file_size + " bytes\t"
                 response +=  file_ctime + "\t" + file_type + "\n"
 
-            send_to_client(response)
+            send_to_client(response, RESPONSE_METHOD_INDEX)
+
         elif flag == COMMAND_INDEX_GET_FLAG_3:
-            send_to_client("Flag 3")
+            send_to_client(response, RESPONSE_METHOD_INDEX)
+
         else:
-            send_to_client(INVALID_COMMAND)
-            print INVALID_COMMAND
-            return
+            invalid_command()
+
         print "list sent successfully"
         return
 
     elif command == COMMAND_FILE_HASH:
-        send_to_client(COMMAND_FILE_HASH)
+        send_to_client(COMMAND_FILE_HASH, RESPONSE_METHOD_HASH)
 
     elif command == COMMAND_FILE_DOWNLOAD:
         if len(request_components) < 3:
-            send_to_client(INVALID_COMMAND)
+            invalid_command()
             return
         file_name = request_components[2]
         print file_name
         try:
             file_stat = os.stat(shared_directory + "/" + file_name)
         except OSError:
-            send_to_client(INVALID_COMMAND)
+            invalid_command()
             return
         print file_stat
         if is_file_in_shared_folder(file_name):
             print "Sending file..."
+            send_to_client(COMMAND_FILE_DOWNLOAD, RESPONSE_METHOD_DOWNLOAD)
         else:
-            send_to_client("No such file")
-        send_to_client(COMMAND_FILE_DOWNLOAD)
+            send_to_client("No such file", RESPONSE_METHOD_ERROR)
 
     elif command == COMMAND_QUIT:
         # Quit command
         print "closing connection"
-        send_to_client(COMMAND_QUIT)
+        send_to_client(COMMAND_QUIT, RESPONSE_METHOD_QUIT)
         conn.close()
         print "connection closed.Exiting..."
         sys.exit()
@@ -279,7 +252,7 @@ while True:
         break
     except Exception, e:
         print "An error occured"
-        send_to_client(COMMAND_QUIT)
+        send_to_client(COMMAND_QUIT, RESPONSE_METHOD_QUIT)
         print e
         break
 
