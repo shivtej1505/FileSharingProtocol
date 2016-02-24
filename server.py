@@ -4,6 +4,7 @@ import sys
 import os
 import stat
 import time
+import hashlib
 from datetime import datetime
 from globals import *
 
@@ -92,6 +93,15 @@ def invalid_command():
 
 def is_file_in_shared_folder(file_name):
     return True
+
+def get_file_checksum(file_obj):
+    md5 = hashlib.md5()
+    while True:
+        data = file_obj.read(1024)
+        if not data:
+            break
+        md5.update(data)
+    return md5.hexdigest()
 
 def run_command(request):
     # is valid command
@@ -224,7 +234,23 @@ def run_command(request):
         print file_stat
         if is_file_in_shared_folder(file_name):
             print "Sending file..."
-            send_to_client(COMMAND_FILE_DOWNLOAD, RESPONSE_METHOD_DOWNLOAD)
+            file_obj = open(shared_directory + "/" + file_name, 'r')
+
+            file_mtime = time.ctime(file_stat.st_mtime)
+            file_size = file_stat.st_size
+            file_hash = get_file_checksum(file_obj)
+            file_attib = file_name + "\t" + str(file_size) + " bytes\t"
+            file_attib += str(file_mtime) + "\t" + file_hash + "\t"
+            
+            file_obj.seek(0)
+            file_content = file_obj.read()
+
+            print "-----------------"
+            data = file_attib + "\n" + file_content
+            print file_content
+            print "-----------------"
+
+            send_to_client(data, RESPONSE_METHOD_DOWNLOAD)
         else:
             send_to_client("No such file", RESPONSE_METHOD_ERROR)
 
@@ -252,6 +278,7 @@ while True:
         break
     except Exception, e:
         print "An error occured"
+        #send_to_client("An error occured", RESPONSE_METHOD_ERROR)
         send_to_client(COMMAND_QUIT, RESPONSE_METHOD_QUIT)
         print e
         break
