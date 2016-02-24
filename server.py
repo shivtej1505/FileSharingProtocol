@@ -16,6 +16,7 @@ COMMAND_HELP = "help"  # help command
 COMMAND_HELP_FLAG_1 = "commands" # get list of commands available
 COMMAND_HELP_FLAG_2 = "IndexGet" # get list of shared files
 COMMAND_HELP_FLAG_3 = "FileHash"
+COMMAND_HELP_FLAG_4 = "FileDownload"
 
 
 COMMAND_INDEX_GET = "IndexGet"
@@ -28,6 +29,9 @@ COMMAND_FILE_HASH = "FileHash"
 COMMAND_FILE_HASH_FLAG_1 = "verify"
 COMMAND_FILE_HASH_FLAG_2 = "checkall"
 
+COMMAND_FILE_DOWNLOAD = "FileDownload"
+COMMAND_FILE_DOWNLOAD_FLAG_1 = "TCP"
+COMMAND_FILE_DOWNLOAD_FLAG_2 = "UDP"
 
 COMMAND_QUIT = "quit"
 
@@ -92,6 +96,9 @@ def send_to_client(data):
             raise RunTimeError("Socket connection broken")
         total_sent += sent
 
+    end_response = "\r\n\r\n"
+    conn.send(end_response)
+
 
 def receive_from_client():
     chunks = []
@@ -109,6 +116,10 @@ def invalid_command():
     print "Invalid command issued by client"
     send_to_client(INVALID_COMMAND)
     return
+
+
+def is_file_in_shared_folder(file_name):
+    return True
 
 def run_command(request):
     # is valid command
@@ -130,7 +141,8 @@ def run_command(request):
             help_string = "The help command\nAvailable commands:\n"
             help_string += COMMAND_HELP + "\n"
             help_string += COMMAND_INDEX_GET + "\n"
-            help_string += COMMAND_FILE_HASH
+            help_string += COMMAND_FILE_HASH + "\n"
+            help_string += COMMAND_FILE_DOWNLOAD
             send_to_client(help_string)
 
         elif flag == COMMAND_HELP_FLAG_2:
@@ -148,12 +160,18 @@ def run_command(request):
             help_string += COMMAND_FILE_HASH_FLAG_2 + "\n"
             send_to_client(help_string)
 
+        elif flag == COMMAND_HELP_FLAG_4:
+            help_string = "Download files from shared folder\n"
+            help_string += "Flags available:\n"
+            help_string += COMMAND_FILE_DOWNLOAD_FLAG_1 + "\n"
+            help_string += COMMAND_FILE_DOWNLOAD_FLAG_2 + "\n"
+            send_to_client(help_string)
+
     elif command == COMMAND_INDEX_GET:
         # IndexGet command
         print "Client requested for list of shared files"
         print "sending list..."
         if flag == COMMAND_INDEX_GET_FLAG_1:
-            print "-----------"
             if len(request_components) < 4:
                 invalid_command()
                 return
@@ -216,6 +234,26 @@ def run_command(request):
         print "list sent successfully"
         return
 
+    elif command == COMMAND_FILE_HASH:
+        send_to_client(COMMAND_FILE_HASH)
+
+    elif command == COMMAND_FILE_DOWNLOAD:
+        if len(request_components) < 3:
+            send_to_client(INVALID_COMMAND)
+            return
+        file_name = request_components[2]
+        print file_name
+        try:
+            file_stat = os.stat(shared_directory + "/" + file_name)
+        except OSError:
+            send_to_client(INVALID_COMMAND)
+            return
+        print file_stat
+        if is_file_in_shared_folder(file_name):
+            print "Sending file..."
+        else:
+            send_to_client("No such file")
+        send_to_client(COMMAND_FILE_DOWNLOAD)
 
     elif command == COMMAND_QUIT:
         # Quit command
