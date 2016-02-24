@@ -5,6 +5,7 @@ import os
 import stat
 import time
 import hashlib
+import re
 from datetime import datetime
 from globals import *
 
@@ -173,7 +174,6 @@ def run_command(request):
 
             response = "Filename\t" + "Size\t\t" + "Date\t\t" + "\t\tType\n"
             files = os.listdir(shared_directory)
-            print files
 
             for a_file in files:
                 file_stat = os.stat(shared_directory + "/" + a_file)
@@ -196,7 +196,6 @@ def run_command(request):
         elif flag == COMMAND_INDEX_GET_FLAG_2:
             response = "Filename\t" + "Size\t\t" + "Date\t\t" + "\t\tType\n"
             files = os.listdir(shared_directory)
-            print files
 
             for a_file in files:
                 file_stat = os.stat(shared_directory + "/" + a_file)
@@ -214,6 +213,30 @@ def run_command(request):
             send_to_client(response, RESPONSE_METHOD_INDEX)
 
         elif flag == COMMAND_INDEX_GET_FLAG_3:
+            if len(request_components) < 3:
+                invalid_command()
+                return
+            pattern = request_components[2]
+            print pattern
+            regex_pattern = re.compile(pattern)
+
+            response = "Filename\t" + "Size\t\t" + "Date\t\t" + "\t\tType\n"
+            files = os.listdir(shared_directory)
+
+            for a_file in files:
+                if regex_pattern.search(a_file):
+                    file_stat = os.stat(shared_directory + "/" + a_file)
+                    file_size = str(file_stat.st_size)
+                    file_ctime = str(time.ctime(file_stat.st_ctime))
+                    file_comp = a_file.split('.')
+                    file_type = FILE_TYPE_UNKNOWN
+
+                    if len(file_comp) == 2:
+                        file_type = file_comp[1]
+
+                    response += a_file + "\t\t" + file_size + " bytes\t"
+                    response +=  file_ctime + "\t" + file_type + "\n"
+
             send_to_client(response, RESPONSE_METHOD_INDEX)
 
         else:
@@ -325,7 +348,7 @@ while True:
         print "An error occured"
         #send_to_client("An error occured", RESPONSE_METHOD_ERROR)
         send_to_client(COMMAND_QUIT, RESPONSE_METHOD_QUIT)
-        #print e
+        print e
         break
 
 conn.close()
