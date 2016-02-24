@@ -77,7 +77,24 @@ def process_response():
 
     elif response_method == RESPONSE_METHOD_DOWNLOAD:
         print "------------------FILE-DOWNLOAD----------------------"
-        print response_body 
+        file_attib = response_body.split("\t")
+        file_name = file_attib[0].split("\n")[1]
+        file_size = file_attib[1]
+        file_mtime = file_attib[2]
+        file_hash = file_attib[3]
+        file_content = ' '.join(file_attib[4:])[1:]
+        print "Filename: " + file_name
+        print "Filesize: " + file_size
+        print "File last modified time: " + file_mtime
+        print "File hash: " + file_hash
+        print "--------------"
+        print file_content
+        print "--------------"
+
+        file_obj = open(file_name, 'w')
+        file_obj.write(file_content)
+        file_obj.close()
+
         print "------------------FILE-DOWNLOAD----------------------"
         return
     
