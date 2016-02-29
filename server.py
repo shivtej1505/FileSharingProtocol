@@ -23,7 +23,6 @@ while True:
     except KeyboardInterrupt:
         print "exiting"
         sys.exit()
-
     if stat.S_ISDIR(dir_stat.st_mode):
         if os.access(shared_directory, os.R_OK) and os.access(shared_directory, os.W_OK):
             print "Ok, directory is readable and writable"

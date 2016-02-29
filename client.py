@@ -64,7 +64,6 @@ except Exception, e:
 
 print 'Connected to ' + HOST
 
-
 def get_response_body(response_length):
     chunks = []
     current_size = 0
