@@ -3,15 +3,22 @@ import socket
 import sys
 import os
 import stat
+import hashlib
+import readline
 from globals import *
 
 try:
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 except socket.error, msg:
     print 'Error: ' + str(socket.error) + "\n" + str(msg)
     sys.exit()
 
 PORT = 3500
+UDP_PORT = 15462
+UDP_IP = "127.0.0.1"
+
+client_udp_socket.bind((UDP_IP, UDP_PORT))
 
 while True:
     try:
@@ -40,11 +47,11 @@ print DOWNLOAD_DIRECTORY + ": " + download_directory
 
 def get_response_header():
     response_protocol = client_socket.recv(7)
+    #print response_protocol
     response_protocol_attrib = client_socket.recv(64)
+    #print response_method
     response_method = response_protocol_attrib[:4]
     response_length = int(response_protocol_attrib[4:])
-    #print response_protocol
-    #print response_method
     #print response_length
     return (response_protocol, response_method, response_length)
 try:
@@ -63,6 +70,11 @@ except Exception, e:
     sys.exit()
 
 print 'Connected to ' + HOST
+
+def get_checksum(data):
+    md5 = hashlib.md5()
+    md5.update(data)
+    return md5.hexdigest()
 
 def get_response_body(response_length):
     chunks = []
@@ -112,6 +124,8 @@ def get_response_body(response_length):
 def process_response():
     response_protocol, response_method, response_length = get_response_header()
     #print response_protocol, response_method, response_length
+    #response_body = get_response_body(response_length)
+    #print response_body
     if response_protocol != RESPONSE_HEADER:
         print "Invalid response"
         return
@@ -156,11 +170,13 @@ def process_response():
             file_mtime = file_attib[2]
             file_hash = file_attib[3]
             file_content = ' '.join(file_attib[4:])[1:]
+            file_content_hash = get_checksum(file_content)
 
             print "Filename: " + file_name
             print "Filesize: " + file_size
             print "File last modified time: " + file_mtime
             print "File hash: " + file_hash
+            print "File New hash: " + file_content_hash
             print "Saving file..."
 
             file_obj = open(download_directory + "/" + file_name, 'w')
@@ -174,7 +190,39 @@ def process_response():
 
         print "------------------FILE-DOWNLOAD----------------------"
         return
-    
+
+    elif response_method == RESPONSE_METHOD_DOWNLOAD_UDP:
+        print "------------------FILE-DOWNLOAD----------------------"
+        chunks = []
+        current_size = 0
+        while current_size < response_length:
+            chunk, addr = client_udp_socket.recvfrom(response_length - current_size)
+            chunks.append(chunk)
+            current_size += len(chunk)
+        
+        response_body = ''.join(chunks)
+
+        file_attib = response_body.split("\t")
+        file_name = file_attib[0]
+        file_size = file_attib[1]
+        file_mtime = file_attib[2]
+        file_hash = file_attib[3]
+        file_content = ' '.join(file_attib[4:])[1:]
+        file_content_hash = get_checksum(file_content)
+
+        print "Filename: " + file_name
+        print "Filesize: " + file_size
+        print "File last modified time: " + file_mtime
+        print "File hash: " + file_hash
+        print "File New hash: " + file_content_hash
+        print "Saving file..."
+
+        file_obj = open(download_directory + "/" + file_name, 'w')
+        file_obj.write(file_content)
+        file_obj.close()
+
+        print "------------------FILE-DOWNLOAD----------------------"
+
     elif response_method == RESPONSE_METHOD_ERROR:
         response_body = get_response_body(response_length)
         print "------------------ERROR----------------------"

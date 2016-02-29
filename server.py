@@ -78,6 +78,25 @@ def send_to_client(data, method_name):
     #footer = conn.send(RESPONSE_FOOTER)
     #print footer
 
+def send_to_client_udp(data, method_name):
+    conn.send(RESPONSE_HEADER)
+    data_size = str(len(data))
+    response_method_and_size = method_name + data_size.zfill(60)
+
+    conn.send(response_method_and_size)
+
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_ip = "127.0.0.1"
+    udp_port = 15462
+
+    total_sent = 0
+    while total_sent < int(data_size):
+        sent = udp_socket.sendto(data[total_sent:], (udp_ip, udp_port))
+        if sent == 0:
+            raise Exception("Socket connection broken")
+        total_sent += sent
+
+    return
 
 def receive_from_client():
     chunks = []
@@ -98,7 +117,10 @@ def invalid_command():
 
 
 def is_file_in_shared_folder(file_name):
-    return True
+    files = os.listdir(shared_directory)
+    if file_name in files:
+        return True
+    return False
 
 def get_file_checksum(file_obj):
     md5 = hashlib.md5()
@@ -142,7 +164,7 @@ def run_command(request):
             send_to_client(help_string, RESPONSE_METHOD_HELP)
 
         elif flag == COMMAND_HELP_FLAG_3:
-            help_string = "Donno\n"
+            help_string = "Verify and get file(s) checksum\n"
             help_string += "Flags available:\n"
             help_string += COMMAND_FILE_HASH_FLAG_1 + "\n"
             help_string += COMMAND_FILE_HASH_FLAG_2 + "\n"
@@ -297,30 +319,63 @@ def run_command(request):
             return
         file_name = request_components[2]
         print file_name
-        try:
-            file_stat = os.stat(shared_directory + "/" + file_name)
-        except OSError:
+
+        if flag == COMMAND_FILE_DOWNLOAD_FLAG_1:
+            print "TCP"
+            try:
+                file_stat = os.stat(shared_directory + "/" + file_name)
+            except OSError:
+                invalid_command()
+                return
+            #print file_stat
+            if is_file_in_shared_folder(file_name):
+                print "Sending file..."
+                file_obj = open(shared_directory + "/" + file_name, 'r')
+
+                file_mtime = time.ctime(file_stat.st_mtime)
+                file_size = file_stat.st_size
+                file_hash = get_file_checksum(file_obj)
+                file_attib = file_name + "\t" + str(file_size) + " bytes\t"
+                file_attib += str(file_mtime) + "\t" + file_hash + "\t"
+            
+                file_obj.seek(0)
+                file_content = file_obj.read()
+
+                data = file_attib + "\n" + file_content
+
+                send_to_client(data, RESPONSE_METHOD_DOWNLOAD)
+            else:
+                send_to_client("No such file", RESPONSE_METHOD_ERROR)
+
+        elif flag == COMMAND_FILE_DOWNLOAD_FLAG_2:
+            print "UDP"
+            try:
+                file_stat = os.stat(shared_directory + "/" + file_name)
+            except OSError:
+                invalid_command()
+                return
+            #print file_stat
+            if is_file_in_shared_folder(file_name):
+                print "Sending file..."
+                file_obj = open(shared_directory + "/" + file_name, 'r')
+
+                file_mtime = time.ctime(file_stat.st_mtime)
+                file_size = file_stat.st_size
+                file_hash = get_file_checksum(file_obj)
+                file_attib = file_name + "\t" + str(file_size) + " bytes\t"
+                file_attib += str(file_mtime) + "\t" + file_hash + "\t"
+            
+                file_obj.seek(0)
+                file_content = file_obj.read()
+
+                data = file_attib + "\n" + file_content
+                send_to_client_udp(data, RESPONSE_METHOD_DOWNLOAD_UDP)
+                print "file sent"
+            else:
+                send_to_client("No such file", RESPONSE_METHOD_ERROR)
+        else:
             invalid_command()
             return
-        #print file_stat
-        if is_file_in_shared_folder(file_name):
-            print "Sending file..."
-            file_obj = open(shared_directory + "/" + file_name, 'r')
-
-            file_mtime = time.ctime(file_stat.st_mtime)
-            file_size = file_stat.st_size
-            file_hash = get_file_checksum(file_obj)
-            file_attib = file_name + "\t" + str(file_size) + " bytes\t"
-            file_attib += str(file_mtime) + "\t" + file_hash + "\t"
-            
-            file_obj.seek(0)
-            file_content = file_obj.read()
-
-            data = file_attib + "\n" + file_content
-
-            send_to_client(data, RESPONSE_METHOD_DOWNLOAD)
-        else:
-            send_to_client("No such file", RESPONSE_METHOD_ERROR)
 
     elif command == COMMAND_QUIT:
         # Quit command
