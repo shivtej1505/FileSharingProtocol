@@ -12,31 +12,17 @@ from globals import *
 HOST = ''
 PORT = 3500
 
-try:
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-except socket.error, msg:
-    print 'Error creating socket: ' + str(msg) + '.\nError: ' + socket.error
-    sys.exit()
-
-server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-
-try:
-    server_socket.bind((HOST, PORT))
-except socket.error, msg:
-    print 'Bind failed. Error Code: ' + str(msg)
-    sys.exit()
-
-print 'Socket bind complete'
-
 while True:
-    shared_directory = raw_input("Enter full path of shared directory: ")
     try:
+        shared_directory = raw_input("Enter full path of shared directory: ")
         dir_stat = os.stat(shared_directory)
-        print dir_stat
+        #print dir_stat
     except OSError:
         print "No such directory"
         continue
+    except KeyboardInterrupt:
+        print "exiting"
+        sys.exit()
 
     if stat.S_ISDIR(dir_stat.st_mode):
         if os.access(shared_directory, os.R_OK) and os.access(shared_directory, os.W_OK):
@@ -51,6 +37,22 @@ while True:
 
 print SHARED_DIRECTORY + ": " + shared_directory
 
+try:
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+except socket.error, msg:
+    print 'Error creating socket: ' + str(msg) + '.\nError: ' + socket.error
+    sys.exit()
+
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+try:
+    server_socket.bind((HOST, PORT))
+except socket.error, msg:
+    print 'Bind failed. Error Code: ' + str(msg)
+    sys.exit()
+
+print 'Socket bind complete'
+
 server_socket.listen(5)
 
 print 'Listing to incoming connections'
@@ -58,7 +60,6 @@ print 'Listing to incoming connections'
 conn, addr = server_socket.accept()
 
 print 'Connected to ' + str(addr[0]) + ":" + str(addr[1])
-
 
 def send_to_client(data, method_name):
     conn.send(RESPONSE_HEADER)
@@ -302,7 +303,7 @@ def run_command(request):
         except OSError:
             invalid_command()
             return
-        print file_stat
+        #print file_stat
         if is_file_in_shared_folder(file_name):
             print "Sending file..."
             file_obj = open(shared_directory + "/" + file_name, 'r')

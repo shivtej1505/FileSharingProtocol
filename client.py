@@ -1,6 +1,8 @@
 #!/usr/bin/python
 import socket
 import sys
+import os
+import stat
 from globals import *
 
 try:
@@ -9,24 +11,32 @@ except socket.error, msg:
     print 'Error: ' + str(socket.error) + "\n" + str(msg)
     sys.exit()
 
-port = 3500
+PORT = 3500
 
-try:
-    #host_ip = socket.gethostbyname(host)
-    #print host_ip
-    host = socket.gethostname()
-except socket.gaierror:
-    print 'Hostname could not be resolved.Exiting'
-    sys.exit()
+while True:
+    try:
+        download_directory = raw_input("Enter full path of directory in which you want to save downloaded files: ")
+        dir_stat = os.stat(download_directory)
+        #print dir_stat
+    except OSError:
+        print "No such directory"
+        continue
+    except KeyboardInterrupt:
+        print "exiting"
+        sys.exit()
 
-try:
-    #print (host_ip, port)
-    client_socket.connect((host, port))
-except Exception, e:
-    print "Cannot connect to server"
-    sys.exit()
+    if stat.S_ISDIR(dir_stat.st_mode):
+        if os.access(download_directory, os.R_OK) and os.access(download_directory, os.W_OK):
+            print "Ok, directory is readable and writable"
+            break
+        else:
+            print "Not enough permission.Try again"
+            continue
+    else:
+        print "No such directory"
+        continue
 
-print 'Connected to ' + host
+print DOWNLOAD_DIRECTORY + ": " + download_directory
 
 def get_response_header():
     response_protocol = client_socket.recv(7)
@@ -37,6 +47,23 @@ def get_response_header():
     #print response_method
     #print response_length
     return (response_protocol, response_method, response_length)
+try:
+    #host_ip = socket.gethostbyname(host)
+    #print host_ip
+    HOST = socket.gethostname()
+except socket.gaierror:
+    print 'Hostname could not be resolved.Exiting'
+    sys.exit()
+
+try:
+    #print (host_ip, port)
+    client_socket.connect((HOST, PORT))
+except Exception, e:
+    print "Cannot connect to server"
+    sys.exit()
+
+print 'Connected to ' + HOST
+
 
 def get_response_body(response_length):
     chunks = []
@@ -137,7 +164,7 @@ def process_response():
             print "File hash: " + file_hash
             print "Saving file..."
 
-            file_obj = open(file_name, 'w')
+            file_obj = open(download_directory + "/" + file_name, 'w')
             file_obj.write(file_content)
             file_obj.close()
 
